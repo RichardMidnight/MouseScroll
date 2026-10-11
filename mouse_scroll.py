@@ -552,10 +552,10 @@ def main():
     choice_var = tk.StringVar()
     choice_var.set(detect_current_choice())
 
-    rb1 = tk.Radiobutton(frm, text="Traditional scrolling (Windows-style)    wheel down = content scrolls up", variable=choice_var, value="windows")
     rb2 = tk.Radiobutton(frm, text="Natural scrolling (Mac-style)    wheel down = content scrolls down", variable=choice_var, value="mac")
-    rb1.pack(anchor="w")
+    rb1 = tk.Radiobutton(frm, text="Traditional scrolling (Windows-style)    wheel down = content scrolls up", variable=choice_var, value="windows")
     rb2.pack(anchor="w")
+    rb1.pack(anchor="w")
 
     btn = tk.Button(frm, text="Apply", command=lambda: apply_choice(choice_var, root))
     btn.pack(pady=16)
