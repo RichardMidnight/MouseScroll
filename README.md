@@ -12,6 +12,22 @@ A small single-file Python GUI to set your mouse/touchpad scroll to
 | **Windows-style** | content scrolls **up** |
 | **Mac-style / natural** | content scrolls **down** (like a trackpad) |
 
+## How it works
+
+It detects your desktop, then writes your choice into the setting that controls
+natural scrolling. What "Apply" does on each platform:
+
+| Platform | How |
+|---|---|
+| **Raspberry Pi / labwc** | Adds a `<naturalScroll>yes/no</naturalScroll>` block to `~/.config/labwc/rc.xml`, then reloads labwc (`labwc --reconfigure` / `SIGHUP`). No admin. |
+| **GNOME** | `gsettings set org.gnome.desktop.peripherals.{mouse,touchpad} natural-scroll <true/false>`. |
+| **X11 (other)** | Installs a tiny per-user autostart helper that runs `xinput` at login. |
+| **Windows** | Sets the HID `FlipFlopWheel` / `FlipFlopHScroll` values (prompts for admin). Replug the mouse. |
+
+`yes`/`true` = Mac-style (natural); `no`/`false` = Windows-style. It edits the
+**per-user** setting only — nothing in the system-wide config, so you can undo it by
+re-running with the other option (or see "Raspberry Pi / labwc" to reset by hand).
+
 ## Install & run
 
 Single Python file, no `pip`. Needs **Python 3** + **Tkinter**
