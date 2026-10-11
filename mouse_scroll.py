@@ -457,39 +457,44 @@ def detect_current_choice() -> str:
     return "windows"
 
 # ---------------------- GUI ----------------------
-def apply_choice(choice_var, root):
-    choice = choice_var.get()
-    natural = (choice == "mac")
-    state = "Natural scrolling (Mac-style)" if natural else "Traditional scrolling (Windows-style)"
-    sub = "wheel down = content scrolls down" if natural else "wheel down = content scrolls up"
+def apply_choice(choice_var, status):
+    """Apply the chosen direction and report the result in the in-window status line.
+
+    We intentionally do NOT open a separate pop-up here: on labwc/Wayland a Tk modal
+    pop-up often opens *behind* the current window and doesn't raise/focus until you
+    click it. Updating a label in the window that is already on top and focused is far
+    more reliable. Green = success, red = a problem + what to do about it.
+    """
+    natural = (choice_var.get() == "mac")
+    def ok(text):
+        status.config(text=text, fg="#1a7f37")
+    def bad(text):
+        status.config(text=text, fg="#b42318")
     if is_windows():
-        ok = windows_apply_scroll(natural)
-        if ok:
-            msg = ("Saved. Unplug and replug your mouse, or disable/enable it in "
-                   "Device Manager, for it to take effect. A reboot is rarely needed.")
-            messagebox.showinfo(APP_TITLE, state + "\n" + sub + "\n\n" + msg)
-    elif is_linux():
-        ok = linux_apply_scroll(natural)
-        if ok:
-            if _linux_last_method == "labwc":
-                msg = ("Saved, and labwc is being reloaded so it applies now. "
-                       "Give the wheel a few rolls to confirm; if it still scrolls "
-                       "the old way, log out and back in.")
-            elif _linux_last_method == "gsettings":
-                msg = ("Saved to GNOME settings and kept across logins. "
-                       "You may need to log out and back in to see it.")
-            elif _linux_last_method == "autostart":
-                msg = ("Saved as a per-user autostart (X11, via xinput). "
-                       "It will re-apply on every login; log out/in to apply now.")
-            else:
-                msg = "Saved."
-            messagebox.showinfo(APP_TITLE, state + "\n" + sub + "\n\n" + msg)
+        if windows_apply_scroll(natural):
+            ok("Saved. Unplug and replug your mouse, or disable/enable it in Device Manager, "
+               "for it to take effect. A reboot is rarely needed.")
         else:
-            messagebox.showwarning(APP_TITLE,
-                                   "Could not apply automatically.\n\n"
-                                   "On Raspberry Pi OS, make sure the labwc desktop is in use.")
+            bad("Could not apply on Windows. Re-run as Administrator (right-click the script, "
+                "choose \"Run as administrator\") so the setting can be saved.")
+    elif is_linux():
+        if linux_apply_scroll(natural):
+            if _linux_last_method == "labwc":
+                ok("Saved, and labwc is reloaded so it applies now. Give the wheel a few rolls "
+                   "to confirm; if it still scrolls the old way, log out and back in.")
+            elif _linux_last_method == "gsettings":
+                ok("Saved to GNOME settings and kept across logins. You may need to log out and "
+                   "back in to see it.")
+            elif _linux_last_method == "autostart":
+                ok("Saved as a per-user autostart (X11, via xinput). It re-applies on every "
+                   "login; log out and back in to apply it now.")
+            else:
+                ok("Saved.")
+        else:
+            bad("Could not apply automatically. On Raspberry Pi OS, make sure the labwc desktop "
+                "is in use (or the matching compositor/DE for your setup).")
     else:
-        messagebox.showerror(APP_TITLE, f"Unsupported OS: {platform.system()}")
+        bad("Unsupported operating system: %s" % platform.system())
 
 def env_label_text() -> str:
     if is_windows():
@@ -557,8 +562,11 @@ def main():
     rb2.pack(anchor="w")
     rb1.pack(anchor="w")
 
-    btn = tk.Button(frm, text="Apply", command=lambda: apply_choice(choice_var, root))
+    status = tk.Label(frm, text="", wraplength=440, justify="left")
+
+    btn = tk.Button(frm, text="Apply", command=lambda: apply_choice(choice_var, status))
     btn.pack(pady=16)
+    status.pack(anchor="w")
 
     foot = tk.Label(
         frm,
