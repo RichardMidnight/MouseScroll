@@ -34,32 +34,43 @@ Debian / Raspberry Pi OS, if `import tkinter` ever fails, run
 **Works on** Windows 10/11 and Linux (Raspberry Pi OS 2026 / labwc is the main
 target; GNOME and legacy X11 are handled too). **macOS is not supported.**
 
-### 1) Get just the one file (no cloning needed)
-
 This is usually a one-off, so just grab the single file and run it from where it
 lands — your browser's **Downloads** folder is fine; you don't need to "install" it.
 
-- **Easiest, no terminal:** in your GitHub repo, open `mouse_scroll.py` and click
-  **Download raw file**. It lands in Downloads — that one file is all you need.
-- **Linux / Raspberry Pi (terminal):**
+> **Easiest, any OS, no terminal:** on GitHub, open `mouse_scroll.py` in this repo
+> and click the **Download raw file** button. It lands in **Downloads** — that one
+> file is all you need. Then use the matching **Run** step for your OS below.
+
+### Linux (Raspberry Pi / GNOME / X11)
+
+**1) Download**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RichardMidnight/MouseScroll/master/mouse_scroll.py -o ~/Downloads/mouse_scroll.py
 ```
-- **Windows (terminal):**
-```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/RichardMidnight/MouseScroll/master/mouse_scroll.py" -OutFile "$HOME\Downloads\mouse_scroll.py"
-```
 
-### 2) Run it (from Downloads)
-
+**2) Run**
 ```bash
-python3 ~/Downloads/mouse_scroll.py              # Linux / Raspberry Pi
-pythonw %USERPROFILE%\Downloads\mouse_scroll.py  # Windows (no console window)
+python3 ~/Downloads/mouse_scroll.py
 ```
 
 Pick **Windows-style** or **Mac-style (natural)** and click **Apply**. That's it.
 
-### 3) It's disposable — safe to delete afterwards
+### Windows 10/11
+
+**1) Download**
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/RichardMidnight/MouseScroll/master/mouse_scroll.py" -OutFile "$HOME\Downloads\mouse_scroll.py"
+```
+
+**2) Run**
+```powershell
+pythonw %USERPROFILE%\Downloads\mouse_scroll.py
+```
+
+Pick **Windows-style** or **Mac-style (natural)** and click **Apply** — it will ask
+for your admin password once (that's how it sets the mouse's direction). Done.
+
+### It's disposable — safe to delete afterwards
 
 The script saves your choice where it belongs, so the file isn't needed once applied:
 
