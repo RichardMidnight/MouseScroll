@@ -43,13 +43,12 @@ lands — your browser's **Downloads** folder is fine; you don't need to "instal
   **Download raw file**. It lands in Downloads — that one file is all you need.
 - **Linux / Raspberry Pi (terminal):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/USER/REPO/main/mouse_scroll.py -o ~/Downloads/mouse_scroll.py
+curl -fsSL https://raw.githubusercontent.com/RichardMidnight/MouseScroll/master/mouse_scroll.py -o ~/Downloads/mouse_scroll.py
 ```
 - **Windows (terminal):**
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/USER/REPO/main/mouse_scroll.py" -OutFile "$HOME\Downloads\mouse_scroll.py"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/RichardMidnight/MouseScroll/master/mouse_scroll.py" -OutFile "$HOME\Downloads\mouse_scroll.py"
 ```
-> Replace `USER/REPO` (and `main`, if needed) with your GitHub username / repo name.
 
 ### 2) Run it (from Downloads)
 
@@ -81,7 +80,7 @@ somewhere on your `PATH`) and re-run it whenever.
 ### For contributors
 
 ```bash
-git clone https://github.com/USER/REPO && cd REPO     # only needed to work on it / test
+git clone https://github.com/RichardMidnight/MouseScroll && cd MouseScroll     # only needed to work on it / test
 python3 test_mouse_scroll.py        # run the labwc XML-writer tests
 python3 mouse_scroll.py --check     # headless: show detected desktop + current setting
 ```
