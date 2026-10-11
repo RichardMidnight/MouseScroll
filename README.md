@@ -20,27 +20,61 @@ Pick a direction, hit **Apply**.
 | **Windows-style** | content scrolls **up** (the classic "bar" behaviour) |
 | **Mac-style / natural** | content scrolls **down** (matches touchscreens & trackpads) |
 
-## Requirements
+## Install & run
 
-Python 3 only — no third-party packages. The GUI uses Tk, which is usually included.
+It's a **single Python file** — no `pip`, no build, no third-party packages. You
+just need **Python 3** and **Tkinter** (bundled into normal Python builds; on
+Debian / Raspberry Pi OS, if `import tkinter` ever fails, run
+`sudo apt install python3-tk`).
+
+**Works on** Windows 10/11 and Linux (Raspberry Pi OS 2026 / labwc is the main
+target; GNOME and legacy X11 are handled too). **macOS is not supported.**
+
+### 1) Get just the one file (no cloning needed)
+
+- **No terminal:** in your GitHub repo, open `mouse_scroll.py` and click the
+  **Download raw file** button. That one file is all you need.
+- **Linux / Raspberry Pi:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/USER/REPO/main/mouse_scroll.py -o ~/mouse_scroll.py
+```
+- **Windows (PowerShell):**
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/USER/REPO/main/mouse_scroll.py" -OutFile "$HOME\mouse_scroll.py"
+```
+> Replace `USER/REPO` (and `main`, if your default branch differs) with your
+> GitHub username and repo name.
+
+### 2) Run it
 
 ```bash
-# Debian / Raspberry Pi OS, only if the Tk import fails
-sudo apt install python3-tk
+python3 ~/mouse_scroll.py              # Linux / Raspberry Pi
+pythonw %USERPROFILE%\mouse_scroll.py  # Windows (no console window)
 ```
 
-Optionally, depending on your desktop (all are optional — they're only used if
-your desktop needs them): `gsettings` (GNOME), `xinput` (X11 fallback).
+Pick **Windows-style** or **Mac-style (natural)** and click **Apply**. That's it.
 
-## Run it
+### 3) It's disposable — safe to delete the file afterwards
+
+The script saves your choice where it belongs, so the file itself isn't needed
+once applied:
+
+- Raspberry Pi / labwc → `~/.config/labwc/rc.xml`
+- GNOME → `gsettings` (per-user, `org.gnome.desktop.peripherals.*`)
+- X11 → a small per-user autostart helper in `~/.local/bin/`
+- Windows → the mouse's HID `FlipFlop*` registry values
+
+So delete it any time (`rm ~/mouse_scroll.py`, or `Remove-Item $HOME\mouse_scroll.py`).
+To change it later, just run it again — re-download the file first if you deleted it.
+*On Windows, “Apply” relaunches the file elevated, so keep it until the change has
+taken effect; on Linux you can remove it right away.*
+
+### For contributors
 
 ```bash
-python mouse_scroll.py          # Linux / macOS-hosted
-pythonw mouse_scroll.py         # Windows (no console window)
-# or simply:
-python3 ./mouse_scroll.py
-
-python3 mouse_scroll.py --check   # headless: report detected desktop + current setting
+git clone https://github.com/USER/REPO && cd REPO     # only needed to work on it / test
+python3 test_mouse_scroll.py        # run the labwc XML-writer tests
+python3 mouse_scroll.py --check     # headless: show detected desktop + current setting
 ```
 
 ## Raspberry Pi OS 2026 (Trixie) notes
