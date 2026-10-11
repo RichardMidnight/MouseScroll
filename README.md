@@ -5,6 +5,10 @@ A small cross-platform GUI to set your mouse/touchpad scroll direction to
 
 Pick a direction, hit **Apply**.
 
+> **⚠️ Beta / early release** — this is in early, unreleased shape: no release
+> guarantees, no SLA, and it may change or break at any time. Use it at your own
+> risk and back up your scroll settings / config before running it.
+
 - **Windows 10/11** — writes the HID `FlipFlopWheel` / `FlipFlopHScroll` registry
   values (auto-elevates to admin). Replug your mouse to take effect.
 - **Raspberry Pi OS 2026 (Trixie) / labwc (Wayland)** — the default target. Writes
