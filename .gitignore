@@ -4,3 +4,6 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+
+# Local backups (superseded versions), kept out of the repo
+_backup/
