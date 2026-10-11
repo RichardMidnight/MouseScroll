@@ -1,152 +1,63 @@
 # Mouse Scroll Direction
 
-A small cross-platform GUI to set your mouse/touchpad scroll direction to
-**Windows-style** or **Mac-style (natural)** with a single click.
+A small single-file Python GUI to set your mouse/touchpad scroll to
+**Windows-style** or **Mac-style (natural)** with one click.
 
-Pick a direction, hit **Apply**.
+> **Beta** — early build; it may change or break. Back up before running.
 
-> **⚠️ Beta / early release** — this is in early, unreleased shape: no release
-> guarantees, no SLA, and it may change or break at any time. Use it at your own
-> risk and back up your scroll settings / config before running it.
+## The two options
 
-- **Windows 10/11** — writes the HID `FlipFlopWheel` / `FlipFlopHScroll` registry
-  values (auto-elevates to admin). Replug your mouse to take effect.
-- **Raspberry Pi OS 2026 (Trixie) / labwc (Wayland)** — the default target. Writes
-  `<naturalScroll>` into the per-user `~/.config/labwc/rc.xml` and reloads labwc.
-  No admin needed, applies immediately.
-- **GNOME (X11 or Wayland)** — uses `gsettings` (persistent).
-- **Legacy X11** — installs a per-user autostart helper that runs `xinput`.
-
-## How the two options feel
-
-| Choice | Rolling the wheel **down** … |
+| You pick | Rolling the wheel **down** … |
 |---|---|
-| **Windows-style** | content scrolls **up** (the classic "bar" behaviour) |
-| **Mac-style / natural** | content scrolls **down** (matches touchscreens & trackpads) |
+| **Windows-style** | content scrolls **up** |
+| **Mac-style / natural** | content scrolls **down** (like a trackpad) |
 
 ## Install & run
 
-It's a **single Python file** — no `pip`, no build, no third-party packages. You
-just need **Python 3** and **Tkinter** (bundled into normal Python builds; on
-Debian / Raspberry Pi OS, if `import tkinter` ever fails, run
-`sudo apt install python3-tk`).
+Single Python file, no `pip`. Needs **Python 3** + **Tkinter**
+(usually bundled; on Debian / Raspberry Pi OS: `sudo apt install python3-tk`).
 
-**Works on** Windows 10/11 and Linux (Raspberry Pi OS 2026 / labwc is the main
-target; GNOME and legacy X11 are handled too). **macOS is not supported.**
+Works on **Windows 10/11** and **Linux** (Raspberry Pi OS 2026 / labwc is the
+main target; GNOME and X11 work too). **macOS is not supported.**
 
-This is usually a one-off, so just grab the single file and run it from where it
-lands — your browser's **Downloads** folder is fine; you don't need to "install" it.
+It's a one-off: grab the file, run it from your **Downloads** folder, done.
+(No terminal: in the repo, click **Download raw file** on `mouse_scroll.py`.)
 
-> **Easiest, any OS, no terminal:** on GitHub, open `mouse_scroll.py` in this repo
-> and click the **Download raw file** button. It lands in **Downloads** — that one
-> file is all you need. Then use the matching **Run** step for your OS below.
-
-### Linux (Raspberry Pi / GNOME / X11)
-
-**1) Download**
+### Linux
 ```bash
+# 1) download
 curl -fsSL https://raw.githubusercontent.com/RichardMidnight/MouseScroll/master/mouse_scroll.py -o ~/Downloads/mouse_scroll.py
-```
-
-**2) Run**
-```bash
+# 2) run
 python3 ~/Downloads/mouse_scroll.py
 ```
 
-Pick **Windows-style** or **Mac-style (natural)** and click **Apply**. That's it.
-
-### Windows 10/11
-
-**1) Download**
+### Windows
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/RichardMidnight/MouseScroll/master/mouse_scroll.py" -OutFile "$HOME\Downloads\mouse_scroll.py"
-```
-
-**2) Run**
-```powershell
+# 1) download
+Invoke-WebRequest https://raw.githubusercontent.com/RichardMidnight/MouseScroll/master/mouse_scroll.py -OutFile "$HOME\Downloads\mouse_scroll.py"
+# 2) run (prompts for admin once)
 pythonw %USERPROFILE%\Downloads\mouse_scroll.py
 ```
 
-Pick **Windows-style** or **Mac-style (natural)** and click **Apply** — it will ask
-for your admin password once (that's how it sets the mouse's direction). Done.
+Pick a direction and click **Apply**. That's it.
 
-### It's disposable — safe to delete afterwards
+**Disposable** — your choice is saved where it belongs, so delete the file after:
+Linux → `rm ~/Downloads/mouse_scroll.py`; Windows → `Remove-Item $HOME\Downloads\mouse_scroll.py`.
+(On Windows, wait a moment after Apply before deleting — it relaunches to apply.)
 
-The script saves your choice where it belongs, so the file isn't needed once applied:
+## Raspberry Pi / labwc
 
-- Raspberry Pi / labwc → `~/.config/labwc/rc.xml`
-- GNOME → `gsettings` (per-user, `org.gnome.desktop.peripherals.*`)
-- X11 → a per-user autostart helper in `~/.local/bin/`
-- Windows → the mouse's HID `FlipFlop*` registry values
-
-So throw the file away (`rm ~/Downloads/mouse_scroll.py`, or
-`Remove-Item %USERPROFILE%\Downloads\mouse_scroll.py`). To change it later, just run
-it again — re-download it first if you deleted it.
-*On Windows, “Apply” relaunches the file elevated, so keep it until the change has
-taken effect; on Linux you can delete it right away.*
-
-If it ever becomes a tool you keep coming back to, just keep that copy (or drop it
-somewhere on your `PATH`) and re-run it whenever.
-
-### For contributors
-
-```bash
-git clone https://github.com/RichardMidnight/MouseScroll && cd MouseScroll     # only needed to work on it / test
-python3 test_mouse_scroll.py        # run the labwc XML-writer tests
-python3 mouse_scroll.py --check     # headless: show detected desktop + current setting
-```
-
-## Raspberry Pi OS 2026 (Trixie) notes
-
-The default desktop is **labwc** (a Wayland/wlroots compositor), not GNOME and not
-X11. The app targets this directly by editing the per-user labwc config:
-
-- Location: `~/.config/labwc/rc.xml` (per-user; overrides the system default and
-  survives package updates).
-- The app adds/updates this block inside the config root and reloads labwc:
-
-  ```xml
-  <libinput>
-    <device category="default"><naturalScroll>yes</naturalScroll></device>
-  </libinput>
-  ```
-
-- `yes` = natural (Mac-style), `no` = traditional (Windows-style).
-- `category="default"` applies to every pointing device (mouse **and** touchpad).
-- Reloads immediately via `labwc --reconfigure`; if it ever doesn't take, log out/in.
-
-> Tip: if things ever go wrong, just delete that file and re-run the app — it
-> regenerates a clean one: `rm ~/.config/labwc/rc.xml`.
-
-### Manual equivalent
-
-```bash
-mkdir -p ~/.config/labwc
-$EDITOR ~/.config/labwc/rc.xml
-```
-
-Insert the `<libinput> … </libinput>` block above inside the root element
-(`<labwc_config>`, or on a default Trixie install the self-closing
-`<openbox_config …/>` — remove the trailing `/` so you can nest). Keep exactly
-**one** `<?xml …?>` declaration on the first line; a second one breaks labwc's parser.
-
-Reapply with `labwc --reconfigure`.
+The app edits the per-user `~/.config/labwc/rc.xml` (adds a `<libinput>` block with
+`<naturalScroll>yes|no</naturalScroll>`) and reloads labwc. No admin needed; applies
+now. If it ever parses wrong: `rm ~/.config/labwc/rc.xml` and re-run.
 
 ## Files
-
-- `mouse_scroll.py` — the app (single file, cross-platform).
-- `test_mouse_scroll.py` — unit tests for the labwc XML writer (`python3 test_mouse_scroll.py`).
-- `historical/` — superseded files (gitignored, not in the repo):
-  `mouse_scroll_info.txt` (the original quick-notes doc, now covered by this
-  README), `MouseScroll.ps1` (the old Windows-only CLI), and `mouse_scroll_2.py`
-  (an earlier revision). The Python app covers everything these did.
+- `mouse_scroll.py` — the app (single file).
+- `test_mouse_scroll.py` — labwc XML-writer tests.
+- `historical/` — superseded files (gitignored, not in the repo).
 
 ## Troubleshooting
-
-- **`ModuleNotFoundError: No module named 'tkinter'`** → `sudo apt install python3-tk`.
-- **labwc: “error parsing config file”** → delete `~/.config/labwc/rc.xml` and re-run
-  the app so it writes a clean file.
-- **Windows: changes didn't stick** → run the app elevated (it prompts to elevate)
-  and replug the mouse.
-- **Want to see what's detected / which method would be used?** → run
-  `python3 mouse_scroll.py --check` (headless, no GUI needed).
+- `No module named 'tkinter'` → `sudo apt install python3-tk`.
+- labwc "error parsing config" → delete `~/.config/labwc/rc.xml` and re-run.
+- Windows changes not sticking → run elevated (it prompts) and replug the mouse.
+- Diagnose without the GUI → `python3 mouse_scroll.py --check`.
