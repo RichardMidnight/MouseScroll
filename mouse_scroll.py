@@ -460,33 +460,33 @@ def detect_current_choice() -> str:
 def apply_choice(choice_var, root):
     choice = choice_var.get()
     natural = (choice == "mac")
-    state = ("Natural scrolling (Mac-style)\nwheel down = content scrolls down"
-             if natural else
-             "Traditional scrolling (Windows-style)\nwheel down = content scrolls up")
-    head = "Scroll direction set to: %s" % state
+    state = "Natural scrolling (Mac-style)" if natural else "Traditional scrolling (Windows-style)"
+    sub = "wheel down = content scrolls down" if natural else "wheel down = content scrolls up"
     if is_windows():
         ok = windows_apply_scroll(natural)
         if ok:
-            msg = ("Applied! Unplug/replug your mouse (or disable/enable it in Device Manager) "
-                   "to take effect. A reboot is rarely needed.")
-            messagebox.showinfo(APP_TITLE, head + "\n\n" + msg)
+            msg = ("Saved. Unplug and replug your mouse, or disable/enable it in "
+                   "Device Manager, for it to take effect. A reboot is rarely needed.")
+            messagebox.showinfo(APP_TITLE, state + "\n" + sub + "\n\n" + msg)
     elif is_linux():
         ok = linux_apply_scroll(natural)
         if ok:
             if _linux_last_method == "labwc":
-                msg = ("Applied to labwc (Raspberry Pi OS / Trixie). It is being applied now;\n"
-                       "if your wheel still scrolls the same way, log out and back in.")
+                msg = ("Saved, and labwc is being reloaded so it applies now. "
+                       "Give the wheel a few rolls to confirm; if it still scrolls "
+                       "the old way, log out and back in.")
             elif _linux_last_method == "gsettings":
-                msg = "Applied via GNOME settings (persistent). You may need to log out/in."
+                msg = ("Saved to GNOME settings and kept across logins. "
+                       "You may need to log out and back in to see it.")
             elif _linux_last_method == "autostart":
-                msg = ("Applied via per-user autostart helper (xinput, X11).\n"
-                       "It will enforce your choice on every login.")
+                msg = ("Saved as a per-user autostart (X11, via xinput). "
+                       "It will re-apply on every login; log out/in to apply now.")
             else:
-                msg = "Applied."
-            messagebox.showinfo(APP_TITLE, head + "\n\n" + msg)
+                msg = "Saved."
+            messagebox.showinfo(APP_TITLE, state + "\n" + sub + "\n\n" + msg)
         else:
             messagebox.showwarning(APP_TITLE,
-                                   "Could not apply settings automatically.\n"
+                                   "Could not apply automatically.\n\n"
                                    "On Raspberry Pi OS, make sure the labwc desktop is in use.")
     else:
         messagebox.showerror(APP_TITLE, f"Unsupported OS: {platform.system()}")
