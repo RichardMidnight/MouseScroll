@@ -83,10 +83,10 @@ Reapply with `labwc --reconfigure`.
 
 - `mouse_scroll.py` — the app (single file, cross-platform).
 - `test_mouse_scroll.py` — unit tests for the labwc XML writer (`python3 test_mouse_scroll.py`).
-- `mouse_scroll_info.txt` — quick install/run notes.
 - `historical/` — superseded files (gitignored, not in the repo):
-  `MouseScroll.ps1` (the old Windows-only CLI) and `mouse_scroll_2.py` (an
-  earlier revision). The Python app covers everything these did.
+  `mouse_scroll_info.txt` (the original quick-notes doc, now covered by this
+  README), `MouseScroll.ps1` (the old Windows-only CLI), and `mouse_scroll_2.py`
+  (an earlier revision). The Python app covers everything these did.
 
 ## Troubleshooting
 
