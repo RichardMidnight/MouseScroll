@@ -1,0 +1,60 @@
+Mouse Scroll Direction — how to run
+
+A single script:      mouse_scroll.py
+(Consolidated. The old mouse_scroll_2.py and MouseScroll.ps1 are superseded —
+ MouseScroll.ps1 is only the old Windows command-line variant.)
+
+Runs cross-platform. Pick Windows-style or Mac/natural scrolling and press Apply.
+
+--------------------------------------------------------------------------
+Requirements
+--------------------------------------------------------------------------
+Python 3 is enough — no third-party packages. The only extras some systems
+need are:
+
+  * tkinter          (bundled with CPython builds; on Debian/Raspberry Pi OS
+                      install with:  sudo apt install python3-tk)
+  * Windows: nothing (uses the built-in winreg + ctypes)
+  * GNOME Linux:     gsettings (already present on GNOME desktops)
+  * X11 fallback:    xinput (apt install xinput) if you're on a legacy X11 DE
+
+--------------------------------------------------------------------------
+Raspberry Pi OS 2026 (Trixie) — the desktop this targets
+--------------------------------------------------------------------------
+2026 = Trixie (Debian 13). The default desktop is labwc (Wayland/wlroots),
+NOT GNOME and NOT X11. The app therefore writes the setting into the
+per-user labwc config and reloads it:
+
+      ~/.config/labwc/rc.xml         (no admin needed, survives updates)
+
+  1  Run the app:          python3 mouse_scroll.py
+  2  Choose a direction, click Apply.
+  3  Done — it applies immediately (the app sends `labwc --reconfigure`).
+
+Manual equivalent, if you ever want it:
+      mkdir -p ~/.config/labwc
+      # In ~/.config/labwc/rc.xml add this block INSIDE the root element,
+      # just before the closing tag. The root is <labwc_config> — or, on a
+      # default Trixie install, a self-closing <openbox_config .../> (remove
+      # the trailing '/' so you can insert). There must be exactly ONE
+      # <?xml ...?> line at the very top; two breaks the parser.
+      #   <libinput>
+      #     <device category="default"><naturalScroll>yes</naturalScroll></device>
+      #   </libinput>
+
+  * yes = Mac-style / natural   (wheel down = content moves down)
+  * no  = Windows-style         (wheel down = content moves up)
+  * category="default" applies to every pointing device (mouse + touchpad).
+
+If it didn't take effect immediately, log out and back in.
+
+If tkinter is missing:
+      sudo apt install python3-tk
+
+--------------------------------------------------------------------------
+Other platforms
+--------------------------------------------------------------------------
+Windows 10/11:  python mouse_scroll.py
+                (auto-elevates to Admin; then unplug/replug the mouse)
+GNOME:          gsettings, applied at login / after logout
+Legacy X11:     installs a per-user autostart that runs xinput
