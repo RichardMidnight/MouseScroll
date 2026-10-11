@@ -39,6 +39,8 @@ python mouse_scroll.py          # Linux / macOS-hosted
 pythonw mouse_scroll.py         # Windows (no console window)
 # or simply:
 python3 ./mouse_scroll.py
+
+python3 mouse_scroll.py --check   # headless: report detected desktop + current setting
 ```
 
 ## Raspberry Pi OS 2026 (Trixie) notes
@@ -80,6 +82,7 @@ Reapply with `labwc --reconfigure`.
 ## Files
 
 - `mouse_scroll.py` — the app (single file, cross-platform).
+- `test_mouse_scroll.py` — unit tests for the labwc XML writer (`python3 test_mouse_scroll.py`).
 - `MouseScroll.ps1` — the original Windows-only command-line variant (kept for
   convenience; the Python app already covers Windows).
 - `mouse_scroll_info.txt` — quick install/run notes.
@@ -91,3 +94,5 @@ Reapply with `labwc --reconfigure`.
   the app so it writes a clean file.
 - **Windows: changes didn't stick** → run the app elevated (it prompts to elevate)
   and replug the mouse.
+- **Want to see what's detected / which method would be used?** → run
+  `python3 mouse_scroll.py --check` (headless, no GUI needed).

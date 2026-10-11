@@ -16,12 +16,20 @@
 import os
 import re
 import sys
+import signal
 import platform
 import subprocess
 import shutil
 import stat
-import tkinter as tk
-from tkinter import messagebox
+
+# tkinter powers the GUI, but the headless `--check` diagnostics don't need it,
+# so a machine without python3-tk can still run `mouse_scroll.py --check`.
+try:
+    import tkinter as tk
+    from tkinter import messagebox
+except ImportError:
+    tk = None
+    messagebox = None
 
 APP_TITLE = "Mouse Scroll Direction"
 HELP_TEXT = "Choose your preferred scroll direction and click Apply."
@@ -128,7 +136,17 @@ def labwc_active() -> bool:
             and (os.path.exists(LABWC_HOME_RC) or os.path.exists(LABWC_SYSTEM_RC)))
 
 def labwc_reload() -> bool:
-    """Best-effort: reload labwc's config so the change applies without a logout."""
+    """Best-effort: reload labwc's config so the change applies without a logout.
+
+    Prefer signalling the running compositor via $LABWC_PID (SIGHUP) — that works
+    without the labwc binary on PATH. Fall back to `labwc --reconfigure`."""
+    pid = os.environ.get("LABWC_PID")
+    if pid and pid.isdigit():
+        try:
+            os.kill(int(pid), signal.SIGHUP)
+            return True
+        except Exception:
+            pass
     if not cmd_exists("labwc"):
         return False
     try:
@@ -153,6 +171,17 @@ def _one_xml_declaration(s: str) -> str:
     for d in set(decls):      # remove every copy of each declaration
         rest = rest.replace(d, "")
     return first + "\n" + rest
+
+def _is_well_formed(text: str) -> bool:
+    """Best-effort well-formedness check (strict enough to catch a duplicate
+    <?xml ...?> declaration or a stray nested root). Used to decide whether to
+    rebuild a clean config instead of editing a broken one in place."""
+    try:
+        import xml.etree.ElementTree as ET
+        ET.fromstring(text)
+        return True
+    except Exception:
+        return False
 
 def _libinput_block(natural: bool) -> str:
     val = "yes" if natural else "no"
@@ -184,8 +213,19 @@ def set_labwc(natural: bool) -> bool:
         if os.path.exists(target):
             with open(target, "r", encoding="utf-8") as f:
                 raw = f.read()
+        # Ensure the per-user labwc config directory exists (fresh installs don't
+        # necessarily create ~/.config/labwc). Without this the first write raises.
+        os.makedirs(os.path.dirname(target), exist_ok=True)
 
-        # 1) We already wrote one -> just flip the value in place.
+        block = _libinput_block(natural)
+
+        # 0) A document that isn't well-formed XML can't be applied by labwc, so
+        #    rather than flip a value inside a broken file, rebuild it cleanly.
+        if raw.strip() and not _is_well_formed(raw):
+            _write(target, DECL + "\n<labwc_config>\n" + block + "</labwc_config>\n")
+            return True
+
+        # 1) A well-formed file that already has a <naturalScroll> -> flip the value.
         if "<naturalScroll>" in raw:
             val = "yes" if natural else "no"
             out = re.sub(r"(<naturalScroll>)\s*(?:yes|no)\s*(</naturalScroll>)",
@@ -193,7 +233,6 @@ def set_labwc(natural: bool) -> bool:
             _write(target, _one_xml_declaration(out))
             return True
 
-        block = _libinput_block(natural)
 
         # Recognized root? (<labwc_config> or <openbox_config>)
         root = re.search(r"<\s*(openbox_config|labwc_config)\b", raw)
@@ -459,11 +498,46 @@ def env_label_text() -> str:
         return "Detected: Linux / X11"
     return f"Detected: {platform.system()}"
 
+def run_check() -> int:
+    """Headless diagnostics: report what we detected and what we'd apply.
+    Runs without tkinter, so it's useful on a machine with no display."""
+    def b(x):
+        return "yes" if x else "no"
+    print("=== mouse_scroll --check ===")
+    print("OS          : %s %s" % (platform.system(), platform.release()))
+    if is_windows():
+        print("Platform    : Windows")
+        print("Would use   : Windows registry (FlipFlopWheel / FlipFlopHScroll)")
+    elif is_linux():
+        print("Platform    : Linux")
+        print("  labwc active : %s   (LABWC_PID=%s)" % (b(labwc_active()), os.environ.get("LABWC_PID", "-")))
+        print("  home rc.xml  : %s exists=%s" % (LABWC_HOME_RC, b(os.path.exists(LABWC_HOME_RC))))
+        print("  sys rc.xml   : %s exists=%s" % (LABWC_SYSTEM_RC, b(os.path.exists(LABWC_SYSTEM_RC))))
+        print("  gsettings    : exists=%s" % b(cmd_exists("gsettings")))
+        print("  xinput       : exists=%s" % b(cmd_exists("xinput")))
+        if labwc_active():
+            method = "labwc (rc.xml)"
+        elif cmd_exists("gsettings"):
+            method = "GNOME gsettings"
+        else:
+            method = "X11 autostart helper (xinput)"
+        print("Would use   : %s" % method)
+        cur = detect_current_choice()
+        print("Current set : %s" % ("natural / Mac-style" if cur == "mac" else "traditional / Windows-style"))
+    else:
+        print("Platform    : unsupported (%s)" % platform.system())
+    print()
+    print("Change it with the GUI:  python3 mouse_scroll.py")
+    return 0
+
 def main():
+    if tk is None:
+        sys.stderr.write("tkinter is not available. Install it, e.g.:\n  sudo apt install python3-tk\n")
+        sys.exit(1)
     root = tk.Tk()
     root.title(APP_TITLE)
     root.resizable(False, False)
-    root.geometry("480x260")
+    root.minsize(460, 220)   # window sizes to content; the footer won't be clipped
 
     frm = tk.Frame(root, padx=16, pady=16)
     frm.pack(fill="both", expand=True)
@@ -474,8 +548,8 @@ def main():
     choice_var = tk.StringVar()
     choice_var.set(detect_current_choice())
 
-    rb1 = tk.Radiobutton(frm, text="Windows-style (down = page goes down)", variable=choice_var, value="windows")
-    rb2 = tk.Radiobutton(frm, text="Mac-style / Natural (down = page goes up)", variable=choice_var, value="mac")
+    rb1 = tk.Radiobutton(frm, text="Windows-style    (wheel down = content scrolls up)", variable=choice_var, value="windows")
+    rb2 = tk.Radiobutton(frm, text="Mac-style / Natural    (wheel down = content scrolls down)", variable=choice_var, value="mac")
     rb1.pack(anchor="w")
     rb2.pack(anchor="w")
 
@@ -495,4 +569,6 @@ def main():
     root.mainloop()
 
 if __name__ == "__main__":
+    if "--check" in sys.argv[1:]:
+        sys.exit(run_check())
     main()
