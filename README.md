@@ -32,42 +32,47 @@ target; GNOME and legacy X11 are handled too). **macOS is not supported.**
 
 ### 1) Get just the one file (no cloning needed)
 
-- **No terminal:** in your GitHub repo, open `mouse_scroll.py` and click the
-  **Download raw file** button. That one file is all you need.
-- **Linux / Raspberry Pi:**
+This is usually a one-off, so just grab the single file and run it from where it
+lands — your browser's **Downloads** folder is fine; you don't need to "install" it.
+
+- **Easiest, no terminal:** in your GitHub repo, open `mouse_scroll.py` and click
+  **Download raw file**. It lands in Downloads — that one file is all you need.
+- **Linux / Raspberry Pi (terminal):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/USER/REPO/main/mouse_scroll.py -o ~/mouse_scroll.py
+curl -fsSL https://raw.githubusercontent.com/USER/REPO/main/mouse_scroll.py -o ~/Downloads/mouse_scroll.py
 ```
-- **Windows (PowerShell):**
+- **Windows (terminal):**
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/USER/REPO/main/mouse_scroll.py" -OutFile "$HOME\mouse_scroll.py"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/USER/REPO/main/mouse_scroll.py" -OutFile "$HOME\Downloads\mouse_scroll.py"
 ```
-> Replace `USER/REPO` (and `main`, if your default branch differs) with your
-> GitHub username and repo name.
+> Replace `USER/REPO` (and `main`, if needed) with your GitHub username / repo name.
 
-### 2) Run it
+### 2) Run it (from Downloads)
 
 ```bash
-python3 ~/mouse_scroll.py              # Linux / Raspberry Pi
-pythonw %USERPROFILE%\mouse_scroll.py  # Windows (no console window)
+python3 ~/Downloads/mouse_scroll.py              # Linux / Raspberry Pi
+pythonw %USERPROFILE%\Downloads\mouse_scroll.py  # Windows (no console window)
 ```
 
 Pick **Windows-style** or **Mac-style (natural)** and click **Apply**. That's it.
 
-### 3) It's disposable — safe to delete the file afterwards
+### 3) It's disposable — safe to delete afterwards
 
-The script saves your choice where it belongs, so the file itself isn't needed
-once applied:
+The script saves your choice where it belongs, so the file isn't needed once applied:
 
 - Raspberry Pi / labwc → `~/.config/labwc/rc.xml`
 - GNOME → `gsettings` (per-user, `org.gnome.desktop.peripherals.*`)
-- X11 → a small per-user autostart helper in `~/.local/bin/`
+- X11 → a per-user autostart helper in `~/.local/bin/`
 - Windows → the mouse's HID `FlipFlop*` registry values
 
-So delete it any time (`rm ~/mouse_scroll.py`, or `Remove-Item $HOME\mouse_scroll.py`).
-To change it later, just run it again — re-download the file first if you deleted it.
+So throw the file away (`rm ~/Downloads/mouse_scroll.py`, or
+`Remove-Item %USERPROFILE%\Downloads\mouse_scroll.py`). To change it later, just run
+it again — re-download it first if you deleted it.
 *On Windows, “Apply” relaunches the file elevated, so keep it until the change has
-taken effect; on Linux you can remove it right away.*
+taken effect; on Linux you can delete it right away.*
+
+If it ever becomes a tool you keep coming back to, just keep that copy (or drop it
+somewhere on your `PATH`) and re-run it whenever.
 
 ### For contributors
 
