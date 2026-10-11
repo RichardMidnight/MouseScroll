@@ -460,12 +460,16 @@ def detect_current_choice() -> str:
 def apply_choice(choice_var, root):
     choice = choice_var.get()
     natural = (choice == "mac")
+    state = ("Natural scrolling (Mac-style)\nwheel down = content scrolls down"
+             if natural else
+             "Traditional scrolling (Windows-style)\nwheel down = content scrolls up")
+    head = "Scroll direction set to: %s" % state
     if is_windows():
         ok = windows_apply_scroll(natural)
         if ok:
             msg = ("Applied! Unplug/replug your mouse (or disable/enable it in Device Manager) "
                    "to take effect. A reboot is rarely needed.")
-            messagebox.showinfo(APP_TITLE, msg)
+            messagebox.showinfo(APP_TITLE, head + "\n\n" + msg)
     elif is_linux():
         ok = linux_apply_scroll(natural)
         if ok:
@@ -479,7 +483,7 @@ def apply_choice(choice_var, root):
                        "It will enforce your choice on every login.")
             else:
                 msg = "Applied."
-            messagebox.showinfo(APP_TITLE, msg)
+            messagebox.showinfo(APP_TITLE, head + "\n\n" + msg)
         else:
             messagebox.showwarning(APP_TITLE,
                                    "Could not apply settings automatically.\n"
@@ -548,8 +552,8 @@ def main():
     choice_var = tk.StringVar()
     choice_var.set(detect_current_choice())
 
-    rb1 = tk.Radiobutton(frm, text="Windows-style    (wheel down = content scrolls up)", variable=choice_var, value="windows")
-    rb2 = tk.Radiobutton(frm, text="Mac-style / Natural    (wheel down = content scrolls down)", variable=choice_var, value="mac")
+    rb1 = tk.Radiobutton(frm, text="Traditional scrolling (Windows-style)    wheel down = content scrolls up", variable=choice_var, value="windows")
+    rb2 = tk.Radiobutton(frm, text="Natural scrolling (Mac-style)    wheel down = content scrolls down", variable=choice_var, value="mac")
     rb1.pack(anchor="w")
     rb2.pack(anchor="w")
 
