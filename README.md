@@ -88,6 +88,34 @@ The app edits the per-user `~/.config/labwc/rc.xml` (adds a `<libinput>` block w
 `<naturalScroll>yes|no</naturalScroll>`) and reloads labwc. No admin needed; applies
 now. If it ever parses wrong: `rm ~/.config/labwc/rc.xml` and re-run.
 
+## Windows
+
+Windows has **no Settings UI for mouse-wheel direction** — that's why your change
+won't show up in *Settings → Bluetooth & devices → Mouse* (that page only offers
+button swap, scroll speed, pointer speed). This tool instead writes the per-device
+HID flags `FlipFlopWheel` / `FlipFlopHScroll`, which take effect when the device is
+(re)plugged. The app itself is the state display: it reads the flag back and
+pre-selects the matching radio.
+
+There is one hidden gotcha. A separate **per-user** value can *also* flip the wheel
+and fight the per-device flag above:
+
+- `HKCU\Control Panel\Mouse\ReverseMouseWheelDirection` (DWORD)
+
+If it's present and non-zero, and the per-device flag is set, the two can cancel
+(each other or double-flip), depending on the raw hardware direction. Check for it:
+
+```cmd
+reg query "HKCU\Control Panel\Mouse" /v ReverseMouseWheelDirection
+```
+
+If it exists and is non-zero, set it to `0` so the tool's per-device flag is the
+sole authority (this won't revert the app's per-device setting):
+
+```cmd
+reg add "HKCU\Control Panel\Mouse" /v ReverseMouseWheelDirection /t REG_DWORD /d 0 /f
+```
+
 ## Files
 - `mouse_scroll.py` — the app (single file).
 - `test_mouse_scroll.py` — labwc XML-writer tests.
@@ -97,5 +125,9 @@ now. If it ever parses wrong: `rm ~/.config/labwc/rc.xml` and re-run.
 - `No module named 'tkinter'` → `sudo apt install python3-tk`.
 - labwc "error parsing config" → delete `~/.config/labwc/rc.xml` and re-run.
 - Windows changes not sticking → run elevated (it prompts) and replug the mouse.
+- Windows direction feels **doubly inverted** (or Settings "doesn't reflect" it) →
+  Settings has no wheel-direction control, so there's nothing to see there; check the
+  hidden per-user flip instead — see the "Windows" section
+  (`reg query "HKCU\Control Panel\Mouse" /v ReverseMouseWheelDirection`).
 - Diagnose without the GUI → `python3 mouse_scroll.py --check` (also reports your
   Python version and whether it meets the 3.4 floor).
