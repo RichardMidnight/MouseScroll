@@ -521,6 +521,19 @@ def detect_current_choice() -> str:
     return "windows"
 
 # ---------------------- GUI ----------------------
+def fit_window(tk_root, min_w=460, min_h=220):
+    """Grow the window so its current content all fits; never shrinks it.
+
+    The window is non-resizable, so Tk won't grow it on its own when a label's
+    text wraps to more lines (the status line after "Apply", or the expanded
+    "More…" footer). We grow it explicitly, and only *up* (max with the current
+    size) so it never snaps smaller and the layout stays put.
+    """
+    tk_root.update_idletasks()
+    new_w = max(tk_root.winfo_width(),  min_w, tk_root.winfo_reqwidth())
+    new_h = max(tk_root.winfo_height(), min_h, tk_root.winfo_reqheight())
+    tk_root.geometry("%dx%d" % (new_w, new_h))
+
 def apply_choice(choice_var, status):
     """Apply the chosen direction and report the result in the in-window status line.
 
@@ -532,8 +545,10 @@ def apply_choice(choice_var, status):
     natural = (choice_var.get() == "mac")
     def ok(text):
         status.config(text=text, fg="#1a7f37")
+        fit_window(status.winfo_toplevel())
     def bad(text):
         status.config(text=text, fg="#b42318")
+        fit_window(status.winfo_toplevel())
     if is_windows():
         if windows_apply_scroll(natural):
             ok("Saved. Unplug and replug your mouse, or disable/enable it in Device Manager, "
@@ -652,7 +667,7 @@ def main():
     root = tk.Tk()
     root.title(APP_TITLE)
     root.resizable(False, False)
-    root.minsize(460, 220)   # window sizes to content; the footer won't be clipped
+    root.minsize(460, 220)   # floor; the real size is computed after layout (below)
 
     frm = tk.Frame(root, padx=16, pady=16)
     frm.pack(fill="both", expand=True)
@@ -681,6 +696,7 @@ def main():
     def toggle_footer():
         detail["on"] = not detail["on"]
         render_footer()
+        fit_window(frm.winfo_toplevel())
 
     foot = tk.Label(frm, text=footer_text(), fg="#8a8a8a", justify="left", wraplength=440)
     foot.pack(anchor="w")
@@ -693,6 +709,13 @@ def main():
     # Apply click would be silently lost otherwise.
     if forced is not None and is_windows() and is_admin_windows():
         apply_choice(choice_var, status)
+
+    # Size the window to its actual content so the footer and the "More…" button
+    # are never clipped. Some window managers (e.g. labwc/Wayland) settle on a
+    # smaller initial size, so we send an explicit, measured geometry request.
+    # fit_window() is re-run after any change that can grow a label (the "Apply"
+    # status line, the "More…" footer) in case that makes the window too short.
+    fit_window(root)
 
     root.mainloop()
 
