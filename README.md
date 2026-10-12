@@ -55,17 +55,31 @@ python3 ~/Downloads/mouse_scroll.py
 ```
 
 ### Windows
+
+Pick the block that matches the shell you opened — read your prompt:
+`C:\Users\You>` is **cmd**; a `(PS) C:\...>` prompt or Windows 11's default
+terminal is **PowerShell**. Don't mix the two.
+
+**cmd (Command Prompt):**
+```cmd
+:: 1) download  (curl.exe exists on Windows 10+; the .exe spelling also works in PowerShell)
+curl.exe -o %USERPROFILE%\Downloads\mouse_scroll.py -L https://raw.githubusercontent.com/RichardMidnight/MouseScroll/master/mouse_scroll.py
+:: 2) run (prompts for admin once)
+pythonw %USERPROFILE%\Downloads\mouse_scroll.py
+```
+
+**PowerShell:**
 ```powershell
 # 1) download
 Invoke-WebRequest https://raw.githubusercontent.com/RichardMidnight/MouseScroll/master/mouse_scroll.py -OutFile "$HOME\Downloads\mouse_scroll.py"
 # 2) run (prompts for admin once)
-pythonw %USERPROFILE%\Downloads\mouse_scroll.py
+pythonw "$HOME\Downloads\mouse_scroll.py"
 ```
 
 Pick a direction and click **Apply**. That's it.
 
 **Disposable** — your choice is saved where it belongs, so delete the file after:
-Linux → `rm ~/Downloads/mouse_scroll.py`; Windows → `Remove-Item $HOME\Downloads\mouse_scroll.py`.
+Linux → `rm ~/Downloads/mouse_scroll.py`; Windows → `del %USERPROFILE%\Downloads\mouse_scroll.py` (cmd) or `Remove-Item $HOME\Downloads\mouse_scroll.py` (PowerShell).
 (On Windows, wait a moment after Apply before deleting — it relaunches to apply.)
 
 ## Raspberry Pi / labwc
