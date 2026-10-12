@@ -30,11 +30,18 @@ re-running with the other option (or see "Raspberry Pi / labwc" to reset by hand
 
 ## Install & run
 
-Single Python file, no `pip`. Needs **Python 3** + **Tkinter**
+Single Python file, no `pip`. Needs **Python 3.4+** and **Tkinter**
 (usually bundled; on Debian / Raspberry Pi OS: `sudo apt install python3-tk`).
+Kept simple so it still runs on old Linux, down to **Debian 8 (Jessie)**.
 
 Works on **Windows 10/11** and **Linux** (Raspberry Pi OS 2026 / labwc is the
 main target; GNOME and X11 work too). **macOS is not supported.**
+
+On older Linux, which method applies depends on your desktop: **GNOME** →
+`gsettings` (works from ~GNOME 3.14 / Jessie up — the reliable path on old
+GNOME); **X11** → the `xinput` helper needs the libinput driver (Debian 9 /
+Stretch+; a no-op on pre-libinput, evdev-era boxes); **labwc** → labwc hosts
+only (Raspberry Pi OS 2026+).
 
 It's a one-off: grab the file, run it from your **Downloads** folder, done.
 (No terminal: in the repo, click **Download raw file** on `mouse_scroll.py`.)

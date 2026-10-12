@@ -150,9 +150,10 @@ def labwc_reload() -> bool:
     if not cmd_exists("labwc"):
         return False
     try:
-        proc = subprocess.run(["labwc", "--reconfigure"],
-                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
-        return proc.returncode == 0
+        subprocess.check_call(["labwc", "--reconfigure"],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                              timeout=5)
+        return True
     except Exception:
         return False
 
@@ -320,7 +321,7 @@ def set_xinput(natural: bool) -> bool:
     if not cmd_exists("xinput"):
         return False
     try:
-        out = subprocess.check_output(["xinput", "list", "--short"], text=True, stderr=subprocess.DEVNULL)
+        out = subprocess.check_output(["xinput", "list", "--short"], universal_newlines=True, stderr=subprocess.DEVNULL)
     except Exception:
         return False
     updated = False
@@ -334,7 +335,7 @@ def set_xinput(natural: bool) -> bool:
     prop = "libinput Natural Scrolling Enabled"
     for did in ids:
         try:
-            props = subprocess.check_output(["xinput", "list-props", did], text=True, stderr=subprocess.DEVNULL)
+            props = subprocess.check_output(["xinput", "list-props", did], universal_newlines=True, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError:
             continue
         if prop in props:
@@ -377,19 +378,18 @@ def linux_install_autostart(natural: bool) -> bool:
         desktop_path = os.path.join(autostart_dir, "mouse_scroll_helper.desktop")
 
         natural_env = "1" if natural else "0"
-        desktop = f"""[Desktop Entry]
-Type=Application
-Version=1.0
-Name=Mouse Scroll Helper
-Comment=Apply natural/traditional scrolling on login (X11)
-Exec=env MOUSE_NATURAL={natural_env} {helper_path}
-X-GNOME-Autostart-enabled=true
-"""
+        desktop = ("[Desktop Entry]\n"
+                   "Type=Application\n"
+                   "Version=1.0\n"
+                   "Name=Mouse Scroll Helper\n"
+                   "Comment=Apply natural/traditional scrolling on login (X11)\n"
+                   "Exec=env MOUSE_NATURAL=%s %s\n"
+                   "X-GNOME-Autostart-enabled=true\n") % (natural_env, helper_path)
         with open(desktop_path, "w", encoding="utf-8") as f:
             f.write(desktop)
         return True
     except Exception as e:
-        messagebox.showerror(APP_TITLE, f"Failed to install autostart: {e}")
+        messagebox.showerror(APP_TITLE, "Failed to install autostart: %s" % e)
         return False
 
 # ---------------------- Linux strategy ----------------------
@@ -446,7 +446,7 @@ def detect_current_choice() -> str:
                            "org.gnome.desktop.peripherals.touchpad"):
                 out = subprocess.check_output(
                     ["gsettings", "get", schema, "natural-scroll"],
-                    text=True, stderr=subprocess.DEVNULL
+                    universal_newlines=True, stderr=subprocess.DEVNULL
                 ).strip()
                 if out in ("true", "false"):
                     return "mac" if out == "true" else "windows"
@@ -505,7 +505,7 @@ def env_label_text() -> str:
         if os.environ.get("WAYLAND_DISPLAY") or "wayland" in os.environ.get("XDG_SESSION_TYPE", "").lower():
             return "Detected: Linux / Wayland"
         return "Detected: Linux / X11"
-    return f"Detected: {platform.system()}"
+    return "Detected: %s" % platform.system()
 
 def run_check() -> int:
     """Headless diagnostics: report what we detected and what we'd apply.
