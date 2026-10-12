@@ -52,10 +52,13 @@ def is_admin_windows():
     except Exception:
         return False
 
-def elevate_windows():
-    # Relaunch self with admin rights
+def elevate_windows(choice):
+    # Relaunch self with admin rights, remembering which direction the user picked
+    # (the elevated copy auto-applies it, so the first click takes effect).
     import ctypes
-    params = " ".join(['"{}"'.format(p) for p in sys.argv])
+    flag = "--set-natural" if choice == "mac" else "--set-traditional"
+    rest = [a for a in sys.argv[1:] if not a.startswith("--set-")] + [flag]
+    params = " ".join(['"{}"'.format(p) for p in [sys.argv[0]] + rest])
     try:
         rc = ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, params, None, 1)
         # ShellExecute returns >32 on success launch
@@ -80,7 +83,7 @@ def windows_apply_scroll(natural: bool) -> bool:
         return False
 
     if not is_admin_windows():
-        ok = elevate_windows()
+        ok = elevate_windows("mac" if natural else "windows")
         if ok:
             # Parent should exit so elevated child continues
             sys.exit(0)
@@ -123,6 +126,49 @@ def windows_apply_scroll(natural: bool) -> bool:
     except PermissionError:
         messagebox.showerror(APP_TITLE, "Permission denied writing registry. Run as Administrator.")
         return False
+
+def windows_flip_state():
+    """
+    Read FlipFlopWheel from the first HID Device Parameters key that has one:
+    0 = natural, 1 = traditional (verified mapping, see windows_apply_scroll).
+    Returns None when no device ever had the flag set (nothing to guess from).
+    """
+    try:
+        import winreg
+    except ImportError:
+        return None
+    state = [None]
+
+    def walk(root, subkey):
+        try:
+            with winreg.OpenKey(root, subkey, 0, winreg.KEY_READ) as key:
+                if state[0] is None and os.path.basename(subkey).lower() == "device parameters":
+                    try:
+                        v, _t = winreg.QueryValueEx(key, "FlipFlopWheel")
+                        state[0] = int(v)
+                    except OSError:
+                        pass
+                i = 0
+                while True:
+                    try:
+                        child = winreg.EnumKey(key, i)
+                    except OSError:
+                        break
+                    i += 1
+                    walk(root, subkey + "\\" + child)
+                    if state[0] is not None:
+                        break
+        except FileNotFoundError:
+            pass
+        except PermissionError:
+            pass
+
+    try:
+        with winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE) as hklm:
+            walk(hklm, r"SYSTEM\CurrentControlSet\Enum\HID")
+    except Exception:
+        pass
+    return state[0]
 
 # ---------------------- labwc helpers (Raspberry Pi OS 2026 / Trixie default) ----------------------
 LABWC_HOME_RC = os.path.expanduser("~/.config/labwc/rc.xml")
@@ -431,6 +477,14 @@ def detect_current_choice() -> str:
     """
     Best-effort guess to preselect radio button. Returns "windows" or "mac".
     """
+    # 0) Windows: the FlipFlop flag we (or other tooling) left on the HID devices.
+    if is_windows():
+        s = windows_flip_state()
+        if s == 0:
+            return "mac"
+        if s == 1:
+            return "windows"
+
     # 1) labwc rc.xml (per-user first, then system)
     for path in (LABWC_HOME_RC, LABWC_SYSTEM_RC):
         try:
@@ -553,6 +607,15 @@ def main():
     if tk is None:
         sys.stderr.write("tkinter is not available. Install it, e.g.:\n  sudo apt install python3-tk\n")
         sys.exit(1)
+    # If we were relaunched with a direction (see elevate_windows), that wins over detection:
+    # it is the choice the user made on the window that elevated us.
+    forced = None
+    for a in sys.argv[1:]:
+        if a == "--set-natural":
+            forced = "mac"
+        elif a == "--set-traditional":
+            forced = "windows"
+
     root = tk.Tk()
     root.title(APP_TITLE)
     root.resizable(False, False)
@@ -565,7 +628,7 @@ def main():
     tk.Label(frm, text=HELP_TEXT, justify="left", wraplength=440).pack(anchor="w", pady=(0, 10))
 
     choice_var = tk.StringVar()
-    choice_var.set(detect_current_choice())
+    choice_var.set(forced if forced is not None else detect_current_choice())
 
     rb2 = tk.Radiobutton(frm, text="Natural scrolling (Mac-style)    wheel down = content scrolls down", variable=choice_var, value="mac")
     rb1 = tk.Radiobutton(frm, text="Traditional scrolling (Windows-style)    wheel down = content scrolls up", variable=choice_var, value="windows")
@@ -587,6 +650,12 @@ def main():
         fg="#666", justify="left", wraplength=440
     )
     foot.pack(anchor="w")
+
+    # If this copy was launched elevated with the user's choice (see elevate_windows),
+    # apply it right away: the window that asked for elevation has already left, so its
+    # Apply click would be silently lost otherwise.
+    if forced is not None and is_windows() and is_admin_windows():
+        apply_choice(choice_var, status)
 
     root.mainloop()
 
