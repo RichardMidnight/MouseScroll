@@ -83,4 +83,5 @@ now. If it ever parses wrong: `rm ~/.config/labwc/rc.xml` and re-run.
 - `No module named 'tkinter'` → `sudo apt install python3-tk`.
 - labwc "error parsing config" → delete `~/.config/labwc/rc.xml` and re-run.
 - Windows changes not sticking → run elevated (it prompts) and replug the mouse.
-- Diagnose without the GUI → `python3 mouse_scroll.py --check`.
+- Diagnose without the GUI → `python3 mouse_scroll.py --check` (also reports your
+  Python version and whether it meets the 3.4 floor).

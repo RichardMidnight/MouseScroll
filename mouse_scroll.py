@@ -514,6 +514,10 @@ def run_check() -> int:
         return "yes" if x else "no"
     print("=== mouse_scroll --check ===")
     print("OS          : %s %s" % (platform.system(), platform.release()))
+    pyv = sys.version_info
+    pys = ("OK (>= 3.4)" if (pyv.major, pyv.minor) >= (3, 4)
+           else "below our 3.4 floor -- Debian 10 (Buster)+ ships 3.7; else install a newer python3")
+    print("Python      : %d.%d.%d  [%s]" % (pyv.major, pyv.minor, pyv.micro, pys))
     if is_windows():
         print("Platform    : Windows")
         print("Would use   : Windows registry (FlipFlopWheel / FlipFlopHScroll)")
