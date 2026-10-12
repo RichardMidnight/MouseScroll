@@ -65,7 +65,13 @@ def elevate_windows():
 
 def windows_apply_scroll(natural: bool) -> bool:
     """
-    Set FlipFlopWheel / FlipFlopHScroll = 1 (natural) or 0 (windows) across all HID Device Parameters.
+    Set FlipFlopWheel / FlipFlopHScroll across all HID Device Parameters.
+    Verified on Win11 + a Microsoft HID mouse (045E:0737): flag=0 (the raw
+    direction) is NATURAL scrolling (wheel down -> content down) and
+    flag=1 (the flip) is standard Windows scrolling. So natural -> 0.
+    If a machine ever behaves the other way around, its mouse's raw
+    direction differs -- pick the other option, or flip this constant.
+    Takes effect on replug / reconnect (the HID miniport reads it on attach).
     """
     try:
         import winreg
@@ -113,7 +119,7 @@ def windows_apply_scroll(natural: bool) -> bool:
 
     try:
         with winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE) as hklm:
-            return recurse_set(hklm, base_path, 1 if natural else 0)
+            return recurse_set(hklm, base_path, 0 if natural else 1)
     except PermissionError:
         messagebox.showerror(APP_TITLE, "Permission denied writing registry. Run as Administrator.")
         return False
