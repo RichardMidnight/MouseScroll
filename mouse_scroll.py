@@ -66,6 +66,44 @@ def elevate_windows(choice):
     except Exception:
         return False
 
+def _hid_device_parameter_keys():
+    r"""
+    Enumerate the paths of every "Device Parameters" key under HKLM
+    SYSTEM\CurrentControlSet\Enum\HID (mouse, touchpads, docks, ...).
+    Shared by the writer (windows_apply_scroll) and the reader
+    (windows_flip_state); missing / unreadable branches are silently skipped.
+    """
+    try:
+        import winreg
+    except ImportError:
+        return []
+    keys = []
+
+    def collect(root, subkey):
+        try:
+            with winreg.OpenKey(root, subkey, 0, winreg.KEY_READ) as key:
+                if os.path.basename(subkey).lower() == "device parameters":
+                    keys.append(subkey)
+                i = 0
+                while True:
+                    try:
+                        child = winreg.EnumKey(key, i)
+                    except OSError:
+                        break
+                    i += 1
+                    collect(root, subkey + "\\" + child)
+        except FileNotFoundError:
+            pass
+        except PermissionError:
+            pass
+
+    try:
+        with winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE) as hklm:
+            collect(hklm, r"SYSTEM\CurrentControlSet\Enum\HID")
+    except Exception:
+        pass
+    return keys
+
 def windows_apply_scroll(natural: bool) -> bool:
     """
     Set FlipFlopWheel / FlipFlopHScroll across all HID Device Parameters.
@@ -91,45 +129,29 @@ def windows_apply_scroll(natural: bool) -> bool:
             messagebox.showwarning(APP_TITLE, "Admin elevation failed. Try running as Administrator.")
             return False
 
-    base_path = r"SYSTEM\CurrentControlSet\Enum\HID"
-
-    def recurse_set(root, subkey, value_to_set):
-        wrote = False
-        try:
-            with winreg.OpenKey(root, subkey, 0, winreg.KEY_READ | winreg.KEY_WRITE) as key:
-                if os.path.basename(subkey).lower() == "device parameters":
-                    for name in ("FlipFlopWheel", "FlipFlopHScroll"):
-                        try:
-                            winreg.SetValueEx(key, name, 0, winreg.REG_DWORD, int(value_to_set))
-                            wrote = True
-                        except OSError:
-                            pass
-                # Recurse
-                i = 0
-                while True:
-                    try:
-                        child = winreg.EnumKey(key, i)
-                        i += 1
-                        if recurse_set(root, subkey + "\\" + child, value_to_set):
-                            wrote = True
-                    except OSError:
-                        break
-        except FileNotFoundError:
-            pass
-        except PermissionError:
-            pass
-        return wrote
-
+    value = 0 if natural else 1
+    wrote = False
     try:
         with winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE) as hklm:
-            return recurse_set(hklm, base_path, 0 if natural else 1)
+            for subkey in _hid_device_parameter_keys():
+                try:
+                    with winreg.OpenKey(hklm, subkey, 0, winreg.KEY_READ | winreg.KEY_WRITE) as key:
+                        for name in ("FlipFlopWheel", "FlipFlopHScroll"):
+                            try:
+                                winreg.SetValueEx(key, name, 0, winreg.REG_DWORD, value)
+                                wrote = True
+                            except OSError:
+                                pass
+                except OSError:
+                    continue
+            return wrote
     except PermissionError:
         messagebox.showerror(APP_TITLE, "Permission denied writing registry. Run as Administrator.")
         return False
 
 def windows_flip_state():
     """
-    Read FlipFlopWheel from the first HID Device Parameters key that has one:
+    Read FlipFlopWheel from the first HID "Device Parameters" key that has one:
     0 = natural, 1 = traditional (verified mapping, see windows_apply_scroll).
     Returns None when no device ever had the flag set (nothing to guess from).
     """
@@ -137,38 +159,18 @@ def windows_flip_state():
         import winreg
     except ImportError:
         return None
-    state = [None]
-
-    def walk(root, subkey):
-        try:
-            with winreg.OpenKey(root, subkey, 0, winreg.KEY_READ) as key:
-                if state[0] is None and os.path.basename(subkey).lower() == "device parameters":
-                    try:
-                        v, _t = winreg.QueryValueEx(key, "FlipFlopWheel")
-                        state[0] = int(v)
-                    except OSError:
-                        pass
-                i = 0
-                while True:
-                    try:
-                        child = winreg.EnumKey(key, i)
-                    except OSError:
-                        break
-                    i += 1
-                    walk(root, subkey + "\\" + child)
-                    if state[0] is not None:
-                        break
-        except FileNotFoundError:
-            pass
-        except PermissionError:
-            pass
-
     try:
         with winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE) as hklm:
-            walk(hklm, r"SYSTEM\CurrentControlSet\Enum\HID")
+            for subkey in _hid_device_parameter_keys():
+                try:
+                    with winreg.OpenKey(hklm, subkey, 0, winreg.KEY_READ) as key:
+                        v, _t = winreg.QueryValueEx(key, "FlipFlopWheel")
+                        return int(v)
+                except OSError:
+                    continue
     except Exception:
         pass
-    return state[0]
+    return None
 
 # ---------------------- labwc helpers (Raspberry Pi OS 2026 / Trixie default) ----------------------
 LABWC_HOME_RC = os.path.expanduser("~/.config/labwc/rc.xml")
@@ -335,6 +337,13 @@ def _strip_decl(s: str) -> str:
     return re.sub(r"^[ \t\r\n]*<\?xml[^>]*\?>[ \t\r\n]*", "", s, count=1)
 
 # ---------------------- GNOME (gsettings) helpers ----------------------
+# The per-user GNOME schemas that carry the natural-scroll switch.
+# Shared by linux_apply_via_gsettings (write) and detect_current_choice (read).
+GNOME_NATURAL_SCROLL = (
+    ("org.gnome.desktop.peripherals.mouse", "natural-scroll"),
+    ("org.gnome.desktop.peripherals.touchpad", "natural-scroll"),
+)
+
 def linux_apply_via_gsettings(natural: bool) -> bool:
     """
     Use GNOME gsettings (persistent, per-user). Only meaningful when GNOME is the DE.
@@ -343,12 +352,8 @@ def linux_apply_via_gsettings(natural: bool) -> bool:
         return False
 
     val = "true" if natural else "false"
-    schemas = [
-        ("org.gnome.desktop.peripherals.mouse", "natural-scroll"),
-        ("org.gnome.desktop.peripherals.touchpad", "natural-scroll"),
-    ]
     any_set = False
-    for schema, key in schemas:
+    for schema, key in GNOME_NATURAL_SCROLL:
         # Verify schema/key exists
         try:
             subprocess.check_call(["gsettings", "get", schema, key],
@@ -502,10 +507,9 @@ def detect_current_choice() -> str:
     # 2) GNOME settings
     try:
         if is_linux() and cmd_exists("gsettings"):
-            for schema in ("org.gnome.desktop.peripherals.mouse",
-                           "org.gnome.desktop.peripherals.touchpad"):
+            for schema, key in GNOME_NATURAL_SCROLL:
                 out = subprocess.check_output(
-                    ["gsettings", "get", schema, "natural-scroll"],
+                    ["gsettings", "get", schema, key],
                     universal_newlines=True, stderr=subprocess.DEVNULL
                 ).strip()
                 if out in ("true", "false"):
@@ -581,6 +585,10 @@ def run_check() -> int:
     if is_windows():
         print("Platform    : Windows")
         print("Would use   : Windows registry (FlipFlopWheel / FlipFlopHScroll)")
+        cur = windows_flip_state()
+        cur_text = {0: "natural / Mac-style",
+                    1: "traditional / Windows-style"}.get(cur, "not set on any HID device")
+        print("Current set : %s" % cur_text)
     elif is_linux():
         print("Platform    : Linux")
         print("  labwc active : %s   (LABWC_PID=%s)" % (b(labwc_active()), os.environ.get("LABWC_PID", "-")))
