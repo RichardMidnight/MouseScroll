@@ -603,6 +603,31 @@ def run_check() -> int:
     print("Change it with the GUI:  python3 mouse_scroll.py")
     return 0
 
+ALL_PLATFORM_FOOTER = (
+    "Raspberry Pi OS 2026 (Trixie) / labwc:\n"
+    "• Natural scroll via ~/.config/labwc/rc.xml — applies now, no admin needed.\n"
+    "Other Linux: GNOME → gsettings; X11 → autostart helper (xinput).\n"
+    "Windows: may request Admin."
+)
+
+def footer_text() -> str:
+    """
+    Short, context-aware footer line for the detected platform.
+    The expanded all-platforms version sits behind the "More…" toggle.
+    """
+    if is_windows():
+        return ("Saving needs Admin (it will ask). After Apply, unplug & replug the mouse "
+                "for it to take effect.")
+    if is_linux():
+        if labwc_active():
+            return "Applies immediately via ~/.config/labwc/rc.xml — no admin needed."
+        if cmd_exists("gsettings"):
+            return "GNOME: saved via gsettings. If it doesn't take effect, sign out and back in."
+        if cmd_exists("xinput"):
+            return "Other X11: saved as a per-user autostart (xinput); sign out/in to apply now."
+        return "Linux: method detected at Apply time (labwc / GNOME / X11)."
+    return "Not a supported platform — see the repo README."
+
 def main():
     if tk is None:
         sys.stderr.write("tkinter is not available. Install it, e.g.:\n  sudo apt install python3-tk\n")
@@ -641,15 +666,19 @@ def main():
     btn.pack(pady=16)
     status.pack(anchor="w")
 
-    foot = tk.Label(
-        frm,
-        text=("Raspberry Pi OS 2026 (Trixie) / labwc:\n"
-              "• Natural scroll via ~/.config/labwc/rc.xml — applies now, no admin needed.\n"
-              "Other Linux: GNOME → gsettings; X11 → autostart helper (xinput).\n"
-              "Windows: may request Admin."),
-        fg="#666", justify="left", wraplength=440
-    )
+    detail = {"on": False}
+    def render_footer():
+        foot.config(text=ALL_PLATFORM_FOOTER if detail["on"] else footer_text())
+        more_btn.config(text="Less" if detail["on"] else "More…")
+    def toggle_footer():
+        detail["on"] = not detail["on"]
+        render_footer()
+
+    foot = tk.Label(frm, text=footer_text(), fg="#8a8a8a", justify="left", wraplength=440)
     foot.pack(anchor="w")
+    more_btn = tk.Button(frm, text="More…", relief="flat", bd=0, fg="#666",
+                         command=toggle_footer, cursor="hand2")
+    more_btn.pack(anchor="w", pady=(4, 0))
 
     # If this copy was launched elevated with the user's choice (see elevate_windows),
     # apply it right away: the window that asked for elevation has already left, so its
