@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <title>Mouse Scroll Direction</title>
+  <desc>A computer mouse with the scroll wheel; arrows show the scroll direction.</desc>
+  <!-- scroll-direction arrows -->
+  <g fill="#1565c0">
+    <!-- up arrow (left): content follows the wheel -->
+    <path d="M6 15 L1 21 L4 21 L4 30 L8 30 L8 21 L11 21 Z"/>
+    <!-- down arrow (right) -->
+    <path d="M42 33 L37 27 L40 27 L40 18 L44 18 L44 27 L47 27 Z"/>
+  </g>
+  <!-- mouse body -->
+  <rect x="13.5" y="5" width="21" height="38" rx="10.5" fill="#eceff1" stroke="#37474f" stroke-width="2"/>
+  <!-- scroll wheel -->
+  <rect x="22.4" y="12" width="3.2" height="10" rx="1.6" fill="#37474f"/>
+</svg>
