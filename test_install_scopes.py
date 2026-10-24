@@ -12,6 +12,7 @@ import os
 import shutil
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SB = tempfile.mkdtemp(prefix="mouse_scroll_scope_test.")
@@ -135,11 +136,24 @@ open(menu, "w").write(
 note, text = ms.labwc_merged_menu(menu, "mouse_scroll_icon", 'python3 "/x/mouse_scroll.py"')
 check("Desktop Preferences..." in text and ms.LABWC_ITEM_BEGIN in text,
       "merge keeps other items, adds ours")
+def xml_commands(t):
+    return [a.get("command") for a in ET.fromstring(t).iter("action")]
+try:
+    cmds = xml_commands(text)
+    check('python3 "/x/mouse_scroll.py"' in cmds,
+          "menu.xml stays well-formed XML and the command attribute round-trips")
+except ET.ParseError as e:
+    check(False, "merged menu.xml is well-formed XML (got: %s)" % e)
 open(menu, "w").write(text)                      # labwc_install would write this
 note2, text2 = ms.labwc_merged_menu(menu, "mouse_scroll_icon", 'python3 "/x/mouse_scroll.py"')
 check("already present" in note2 and text2 == text, "merge idempotent (item already in file)")
 note3, text3 = ms.labwc_merged_menu(menu, "mouse_scroll_icon", 'python3 "/NEW/mouse_scroll.py"')
-check("updated launch command" in note3 and '"/NEW/mouse_scroll.py"' in text3
+try:
+    cmds3 = xml_commands(text3)
+except ET.ParseError as e:
+    cmds3 = []
+    check(False, "refreshed menu.xml is well-formed XML (got: %s)" % e)
+check("updated launch command" in note3 and 'python3 "/NEW/mouse_scroll.py"' in cmds3
       and "Desktop Preferences..." in text3, "stale launch command refreshed in place")
 open(menu, "w").write(text3)
 got = ms.labwc_uninstall_menu_item(menu, False)
@@ -155,6 +169,7 @@ open(menu2, "w").write(
 n, t = ms.labwc_merged_menu(menu2, "i", "python3 /x/m")
 check('<menu id="root-menu">' in t and "Terminal" in t,
       "insert builds a root-menu when none exists")
+check("python3 /x/m" in xml_commands(t), "unquoted command also round-trips through the XML")
 open(menu2, "w").write(t)
 got = ms.labwc_uninstall_menu_item(menu2, False)
 t = open(menu2).read()
@@ -167,10 +182,37 @@ ms._labwc_menu_upstream = lambda target: None    # no upstream: skeleton only
 n, t = ms.labwc_merged_menu(menu3, "i", "python3 /x/m")
 ms._labwc_menu_upstream = _orig_upstream
 check(ms.LABWC_FILE_CREATED in t, "file we create carries the created-marker")
+check("python3 /x/m" in xml_commands(t), "skeleton menu is well-formed XML")
 open(menu3, "w").write(t)
 got = ms.labwc_uninstall_menu_item(menu3, False)
 check("deleted" in got and not os.path.exists(menu3),
       "created empty-of-rest menu deleted wholesale")
+
+# ---------------- self-closing empty root (e.g. bare <openbox_menu/>) ----------------
+menu4 = SB + "/menu4.xml"
+open(menu4, "w").write("<?xml version='1.0' encoding='UTF-8'?>\n<openbox_menu/>\n")
+n4, t4 = ms.labwc_merged_menu(menu4, "i", "python3 /x/m")
+check('<menu id="root-menu">' in t4 and "python3 /x/m" in xml_commands(t4),
+      "self-closing <openbox_menu/> root gets expanded to hold our item")
+
+# ---------------- run_set_direction: headless apply from the CLI ----------------
+def with_argv(args, fn):
+    saved = sys.argv
+    sys.argv = ["mouse_scroll.py"] + args
+    try:
+        return fn()
+    finally:
+        sys.argv = saved
+
+ms.labwc_active = lambda: True   # sandboxed rc.xml; labwc_reload stubbed at top of file
+rc = with_argv(["--set-natural"], ms.run_set_direction)
+check(rc == 0, "--set-natural headless apply -> rc 0")
+check("yes" in open(ms.LABWC_HOME_RC).read(), "sandbox rc.xml now holds naturalScroll yes")
+rc = with_argv(["--set-traditional"], ms.run_set_direction)
+check(rc == 0, "--set-traditional headless apply -> rc 0")
+check("yes" not in open(ms.LABWC_HOME_RC).read(), "rc.xml flipped back to traditional")
+check(with_argv(["--set-natural", "--set-traditional"], ms.run_set_direction) == 1,
+      "both directions at once -> rc 1, refused")
 
 shutil.rmtree(SB, ignore_errors=True)
 print("\nALL SCOPE TESTS PASSED")

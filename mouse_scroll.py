@@ -17,6 +17,12 @@
 #   python3 mouse_scroll.py uninstall   -> removes whatever is installed (confirm)
 #   (install -y = all users, no questions; uninstall -y skips its confirmation.)
 #
+# Set the direction from the command line (no GUI, works without a display):
+#   python3 mouse_scroll.py --set-natural / --set-traditional   (Linux)
+#   (Windows: the same flags preselect the GUI choice and auto-apply it when elevated)
+#
+# Full command-line reference:  python3 mouse_scroll.py --help  (also -h, or "help")
+#
 # Prerequisites (tkinter, and xinput on X11-only boxes) are detected at launch;
 # missing ones are offered for install (sudo apt ...) and installed on the spot,
 # or installed without asking when -y / --yes is passed.
@@ -536,6 +542,16 @@ def _menu_exec_cmd(script_path=None) -> str:
     script = script_path or os.path.abspath(os.path.realpath(__file__))
     return '%s "%s"' % (exe, script)
 
+def _xml_attr_escape(s) -> str:
+    """Escape a string for use inside a double-quoted XML attribute value.
+    labwc's menu.xml is XML, but _menu_exec_cmd() returns a shell line that
+    contains double quotes -- unescaped, those would break the file's
+    well-formedness and labwc would no longer be able to parse the menu."""
+    return (s.replace("&", "&amp;")
+             .replace("<", "&lt;")
+             .replace(">", "&gt;")
+             .replace('"', "&quot;"))
+
 def _menu_desktop_entry(icon_names, exec_cmd=None) -> str:
     """Freedesktop .desktop file -> lands in the application menu's
     Settings/Preferences group (the wf-panel/pcmanfm start menu on Raspberry
@@ -559,7 +575,8 @@ def _labwc_menu_item(indent="  ", icon_name="preferences-desktop-input", exec_cm
     (labwc resolves a single icon name, so only the primary one goes here.)"""
     return (LABWC_ITEM_BEGIN + "\n"
             + indent + '<item label="Mouse Scroll Direction" icon="%s">\n' % icon_name
-            + indent + '  <action name="Execute" command="%s" />\n' % (exec_cmd or _menu_exec_cmd())
+            + indent + '  <action name="Execute" command="%s" />\n'
+                         % _xml_attr_escape(exec_cmd or _menu_exec_cmd())
             + indent + '</item>\n'
             + LABWC_ITEM_END + "\n")
 
@@ -616,9 +633,13 @@ def _labwc_insert_item(base, icon_name="preferences-desktop-input", exec_cmd=Non
         if close != -1:
             return base[:close] + item + base[close:]
     block = '\n  <menu id="root-menu">\n' + _labwc_menu_item("    ", icon_name, exec_cmd) + '  </menu>\n'
-    m = re.search(r"</\s*openbox_menu\s*/>", base)
+    m = re.search(r"</\s*openbox_menu\s*>", base)
     if m:
         return base[:m.start()] + block + base[m.start():]
+    m = re.search(r"<\s*openbox_menu\s*/\s*>", base)
+    if m:
+        # an empty self-closing root: expand it so it can hold the new root-menu
+        return base[:m.start()] + "<openbox_menu>\n" + block + "</openbox_menu>\n"
     # not even a closing </openbox_menu>: best effort at the end of the file
     return base.rstrip() + "\n" + block + "\n</openbox_menu>\n"
 
@@ -636,7 +657,7 @@ def labwc_merged_menu(menu_file, icon_name="preferences-desktop-input", exec_cmd
             if exec_cmd:
                 seg = base[base.index(LABWC_ITEM_BEGIN):
                            base.index(LABWC_ITEM_END) + len(LABWC_ITEM_END)]
-                if exec_cmd not in seg:
+                if _xml_attr_escape(exec_cmd) not in seg:
                     m = re.search(r"\n(\s*)<\s*item", seg)
                     fresh = _labwc_menu_item(m.group(1) if m else "  ", icon_name, exec_cmd)
                     return "updated launch command in %s" % menu_file, base.replace(seg, fresh, 1)
@@ -1113,6 +1134,33 @@ def run_check() -> int:
     print("Change it with the GUI:  python3 mouse_scroll.py")
     return 0
 
+def run_set_direction() -> int:
+    """Apply a scroll direction directly from the command line, no GUI:
+      mouse_scroll.py --set-natural         (Mac-style)
+      mouse_scroll.py --set-traditional     (Windows-style)
+    Runs headless -- no tkinter, no display -- so it works over SSH, from a
+    script, or at login. (On Windows these flags instead preselect the GUI's
+    choice and auto-apply it when elevated; see elevate_windows.)"""
+    natural = "--set-natural" in sys.argv[1:]
+    if natural == ("--set-traditional" in sys.argv[1:]):
+        # both set, or (defensively) neither -- dispatch passes exactly one
+        print("Pass exactly one of --set-natural or --set-traditional.")
+        return 1
+    if not linux_apply_scroll(natural):
+        print("Could not apply automatically. See what this system supports with:")
+        print("  mouse_scroll.py --check")
+        return 1
+    print("Set scroll to %s." %
+          ("natural, Mac-style" if natural else "traditional, Windows-style"))
+    if _linux_last_method == "labwc":
+        print("Saved to labwc's rc.xml and the compositor reloaded -- give the wheel")
+        print("a few rolls to confirm; if it still scrolls the old way, log out and back in.")
+    elif _linux_last_method == "gsettings":
+        print("Saved to GNOME settings; you may need to log out and back in to see it.")
+    elif _linux_last_method == "autostart":
+        print("Saved as a per-user X11 autostart; log out and back in to apply it now.")
+    return 0
+
 ALL_PLATFORM_FOOTER = (
     "Raspberry Pi OS 2026 (Trixie) / labwc:\n"
     "• Natural scroll via ~/.config/labwc/rc.xml — applies now, no admin needed.\n"
@@ -1281,9 +1329,49 @@ def main():
 def _yes_flag() -> bool:
     return any(a in ("-y", "--yes") for a in sys.argv[1:])
 
+def print_usage() -> int:
+    """Show command-line usage. Plain stdout, so it works without a display
+    or tkinter -- it is dispatched before any of those can do any work."""
+    print("""Mouse Scroll Direction -- set mouse scroll to Windows-style or Mac-style.
+
+Usage:
+  mouse_scroll.py               Open the GUI: pick a direction, then click Apply.
+  mouse_scroll.py --check       Headless diagnostics: what we detected, what would
+                                be applied, and whether prerequisites are met. No
+                                display or tkinter required.
+  mouse_scroll.py --help        Show this help (also: -h, or "help").
+
+Desktop menu (Linux only) -- two scopes, only one active at a time:
+  mouse_scroll.py install       Add the entry under the Settings/Preferences
+                                section of the menu. Asks whether to install for
+                                all users (recommended, /usr/local, needs sudo)
+                                or just this user (~/.local), then copies this
+                                script and the icon into that scope.
+  mouse_scroll.py uninstall     Remove whatever is installed (both scopes) after
+                                a confirmation prompt. Your scroll *setting*
+                                itself is left untouched.
+
+Options:
+  -y, --yes                     Skip the questions: with install, that means
+                                "all users"; with uninstall, it skips the
+                                confirmation entirely.
+
+Set the direction from the command line (no GUI; works over SSH or at login):
+  mouse_scroll.py --set-natural         Natural, Mac-style scrolling.
+  mouse_scroll.py --set-traditional     Traditional, Windows-style scrolling.
+  On Linux this applies immediately (labwc, GNOME gsettings, or the X11
+  autostart helper, whatever the desktop uses). On Windows the flags instead
+  preselect the choice in the GUI and auto-apply it when elevated.
+""")
+    return 0
+
 if __name__ == "__main__":
+    if "-h" in sys.argv[1:] or "--help" in sys.argv[1:] or "help" in sys.argv[1:]:
+        sys.exit(print_usage())
     if "--check" in sys.argv[1:]:
         sys.exit(run_check())
+    if is_linux() and ("--set-natural" in sys.argv[1:] or "--set-traditional" in sys.argv[1:]):
+        sys.exit(run_set_direction())
     if "install" in sys.argv[1:]:
         sys.exit(run_install(_yes_flag()))
     if "uninstall" in sys.argv[1:]:
