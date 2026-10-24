@@ -139,17 +139,9 @@ reg add "HKCU\Control Panel\Mouse" /v ReverseMouseWheelDirection /t REG_DWORD /d
 - `mouse_scroll.py` — the app (single file).
 - `mouse_scroll_icon.svg` — the menu icon (install copies it into the chosen scope).
 - `test_mouse_scroll.py` — labwc XML-writer tests.
+- `test_install_scopes.py` — install-scope engine tests (sandboxed HOME).
+- `test_prereqs.py` — prerequisite-detection tests (mocked).
 - `historical/` — superseded files (gitignored, not in the repo).
-
-## Outstanding (known follow-ups, as of 2026-10-24)
-- **The all-users (system) install has not been run on a real machine yet.**
-  The sudo paths (`sudo install` into `/usr/local`, merge into
-  `/etc/xdg/labwc/menu.xml`) were only verified against sandboxed paths.
-  Exercise with: `install` → `A` → `uninstall` while watching the `/usr/local`
-  and `/etc/xdg` artifacts.
-- **The install-scope test suites are ephemeral** — `test_scopes.py` (20 checks)
-  and `test_prereq.py` (7 scenarios) live in `/tmp/opencode/` (lost on reboot).
-  Move them into the repo next to `test_mouse_scroll.py`.
 
 ## Troubleshooting
 - `No module named 'tkinter'` → `sudo apt install python3-tk`
