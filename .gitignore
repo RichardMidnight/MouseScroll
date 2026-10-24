@@ -7,3 +7,6 @@ venv/
 
 # Historical files (superseded versions), kept out of the repo
 historical/
+
+# Test suites (local dev tools), kept out of the repo
+test_*.py
