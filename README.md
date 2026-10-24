@@ -82,6 +82,25 @@ Pick a direction and click **Apply**. That's it.
 Linux → `rm ~/Downloads/mouse_scroll.py`; Windows → `del %USERPROFILE%\Downloads\mouse_scroll.py` (cmd) or `Remove-Item $HOME\Downloads\mouse_scroll.py` (PowerShell).
 (On Windows, wait a moment after Apply before deleting — it relaunches to apply.)
 
+### Desktop menu entry (Linux, optional)
+
+Make the app appear in the desktop menu — Settings/Preferences section of the
+app menu, plus a right-click desktop menu item when labwc is the desktop:
+
+```bash
+python3 mouse_scroll.py install     # asks: [A]ll users, or this [U]ser only
+python3 mouse_scroll.py uninstall   # removes whatever is installed (one confirm)
+python3 mouse_scroll.py --check     # shows which scope is active (if any)
+```
+
+- **All users** (recommended; hit **enter** or `A`) → copies the script and the
+  icon into `/usr/local` (needs `sudo`).
+- **This user only** (`U`) → copies them into `~/.local`, no `sudo`.
+- Only **one scope is active at a time** — installing one retires the other.
+- `install -y` = all users, no prompts. `n`, EOF or Ctrl-C aborts with nothing changed.
+- The menu entry runs the **copied** script, so the app still works even if you
+  delete or move the file you downloaded.
+
 ## Raspberry Pi / labwc
 
 The app edits the per-user `~/.config/labwc/rc.xml` (adds a `<libinput>` block with
@@ -118,11 +137,23 @@ reg add "HKCU\Control Panel\Mouse" /v ReverseMouseWheelDirection /t REG_DWORD /d
 
 ## Files
 - `mouse_scroll.py` — the app (single file).
+- `mouse_scroll_icon.svg` — the menu icon (install copies it into the chosen scope).
 - `test_mouse_scroll.py` — labwc XML-writer tests.
 - `historical/` — superseded files (gitignored, not in the repo).
 
+## Outstanding (known follow-ups, as of 2026-10-24)
+- **The all-users (system) install has not been run on a real machine yet.**
+  The sudo paths (`sudo install` into `/usr/local`, merge into
+  `/etc/xdg/labwc/menu.xml`) were only verified against sandboxed paths.
+  Exercise with: `install` → `A` → `uninstall` while watching the `/usr/local`
+  and `/etc/xdg` artifacts.
+- **The install-scope test suites are ephemeral** — `test_scopes.py` (20 checks)
+  and `test_prereq.py` (7 scenarios) live in `/tmp/opencode/` (lost on reboot).
+  Move them into the repo next to `test_mouse_scroll.py`.
+
 ## Troubleshooting
-- `No module named 'tkinter'` → `sudo apt install python3-tk`.
+- `No module named 'tkinter'` → `sudo apt install python3-tk`
+  (the app now detects this at launch and offers to install it for you).
 - labwc "error parsing config" → delete `~/.config/labwc/rc.xml` and re-run.
 - Windows changes not sticking → run elevated (it prompts) and replug the mouse.
 - Windows direction feels **doubly inverted** (or Settings "doesn't reflect" it) →
